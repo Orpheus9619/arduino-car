@@ -1,0 +1,140 @@
+#include <Servo.h>
+#include <SoftwareSerial.h>
+
+// 馬達引腳定義
+const int motorL1Pin1 = 11;
+const int motorL1Pin2 = 10;
+const int motorR1Pin1 = 8;
+const int motorR1Pin2 = 9;
+
+const int motorL2Pin1 = 7;
+const int motorL2Pin2 = 6;
+const int motorR2Pin1 = 4;
+const int motorR2Pin2 = 5;
+
+// 舵機引腳
+const int servoPin = 3;
+
+// 創建舵機對象
+Servo steeringServo;
+
+// 藍牙接收指令
+char command = ' ';
+String commands = ""; // 用來儲存指令的字串
+
+
+// 定義軟體串口
+SoftwareSerial bluetooth(13, 12); // RX, TX（藍牙模組接到 Pin 10 和 Pin 11）
+
+void setup() {
+  // 馬達引腳初始化
+  pinMode(motorL1Pin1, OUTPUT);
+  pinMode(motorL1Pin2, OUTPUT);
+  pinMode(motorR1Pin1, OUTPUT);
+  pinMode(motorR1Pin2, OUTPUT);
+  pinMode(motorL2Pin1, OUTPUT);
+  pinMode(motorL2Pin2, OUTPUT);
+  pinMode(motorR2Pin1, OUTPUT);
+  pinMode(motorR2Pin2, OUTPUT);
+
+  stopMotors();
+
+  // 舵機初始化
+  steeringServo.attach(servoPin);
+  steeringServo.write(90); // 設置舵機初始角度為 90 度（直行）
+
+  // 藍牙模組初始化
+  bluetooth.begin(9600); // 設置藍牙模組波特率
+  Serial.begin(9600);    // 調試串口波特率
+
+  Serial.println("Bluetooth Control Ready");
+}
+
+void loop() {
+  // 接收來自藍牙的指令
+  if (bluetooth.available()) {
+    char incomingByte = bluetooth.read(); // 讀取藍牙指令字元
+    executeCommand(incomingByte);
+    if (incomingByte == '\n' || incomingByte == '\r') { // 如果接收到換行符號，表示指令結束
+      Serial.print("Received: ");
+      Serial.println(commands); // 顯示完整的指令
+      commands = ""; // 清空指令字串，準備接收下一個指令
+    } else {
+      commands += incomingByte; // 將接收到的字元加入到指令中
+    }
+  }
+}
+
+// 根據指令執行操作
+void executeCommand(char cmd) {
+  // Serial.println(command);    // 輸出到串口監視器
+  switch (cmd) {
+    case 'F': // 前進
+      moveForward();
+      break;
+    case 'B': // 後退
+      moveBackward();
+      break;
+    case 'L': // 左轉
+      turnLeft();
+      break;
+    case 'R': // 右轉
+      turnRight();
+      break;
+    case 'S': // 停止
+      stopMotors();
+      break;
+    case 'C': // 舵機回正
+      steeringServo.write(90);
+      break;
+  }
+}
+
+// 馬達控制函數
+void moveForward() {
+  moveMotor(motorL1Pin1, motorL1Pin2, true);
+  moveMotor(motorR1Pin1, motorR1Pin2, true);
+  moveMotor(motorL2Pin1, motorL2Pin2, true);
+  moveMotor(motorR2Pin1, motorR2Pin2, true);
+}
+
+void moveBackward() {
+  moveMotor(motorL1Pin1, motorL1Pin2, false);
+  moveMotor(motorR1Pin1, motorR1Pin2, false);
+  moveMotor(motorL2Pin1, motorL2Pin2, false);
+  moveMotor(motorR2Pin1, motorR2Pin2, false);
+}
+
+void turnLeft() {
+  // 舵機左轉 45 度
+  steeringServo.write(70);
+}
+
+void turnRight() {
+  // 舵機右轉 45 度
+  steeringServo.write(110);
+}
+
+void stopMotors() {
+  stopMotor(motorL1Pin1, motorL1Pin2);
+  stopMotor(motorR1Pin1, motorR1Pin2);
+  stopMotor(motorL2Pin1, motorL2Pin2);
+  stopMotor(motorR2Pin1, motorR2Pin2);
+}
+
+// 控制單個馬達的方向
+void moveMotor(int pin1, int pin2, bool forward) {
+  if (forward) {
+    digitalWrite(pin1, HIGH);
+    digitalWrite(pin2, LOW);
+  } else {
+    digitalWrite(pin1, LOW);
+    digitalWrite(pin2, HIGH);
+  }
+}
+
+// 停止單個馬達
+void stopMotor(int pin1, int pin2) {
+  digitalWrite(pin1, LOW);
+  digitalWrite(pin2, LOW);
+}
